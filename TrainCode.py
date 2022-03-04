@@ -25,24 +25,24 @@ def setup_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 seed = 20
-epochs = 1e1
+epochs = 1e4
 lr_rate = 1e-3
-step = 300
+step = 500
 gamma_size = 0.99
 model_path = 'D:/model/point'
 
 setup_seed(seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = PointNet.PointNetPartSeg(2).to(device)
+model = PointNet.PointNetPartSeg(3).to(device)
 batch_size = 1
-criterion = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=lr_rate)
+criterion = torch.nn.MSELoss()
+optimizer = Adam(model.parameters(), lr=lr_rate)
 scheduler = lr_scheduler.StepLR(optimizer, step_size=step, gamma=gamma_size)
 
 def train():
-    liver_dataset = DataLoad.AllDataset("D:/data/excise_data/data0")
+    train_dataset = DataLoad.AllDataset("D:/data/excise_data/data0")
     # liver_dataset = DataLoad.AllDataset("D:/data/excise_data", transform=x_transforms, target_transform=y_transforms)
-    dataloaders = DataLoader(liver_dataset, batch_size=batch_size, drop_last=True,shuffle=False, num_workers=0)
+    dataloaders = DataLoader(train_dataset, batch_size=batch_size, drop_last=True,shuffle=False, num_workers=0)
     for epoch in range(int(epochs)):
         print('-' * 10)
         print('Epoch {}/{}'.format(epoch, epochs - 1))
@@ -50,8 +50,8 @@ def train():
         step = 0
         for x, y in dataloaders:
             step += 1
-            inputs = torch.tensor(np.array(x)).reshape(1, 3, 14).float().to(device)
-            labels = torch.tensor(np.array(y)).reshape(14, 3, 1).float().to(device)
+            inputs = torch.tensor(np.asarray(x)).reshape(1, 3, -1).float().to(device)
+            labels = torch.tensor(np.asarray(y)).reshape(1, -1, 3).float().to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)

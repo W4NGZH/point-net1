@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import torch .nn.functional as F
 
 
 class T_Net(nn.Module):
@@ -15,12 +14,9 @@ class T_Net(nn.Module):
         self.fc2 = nn.Linear(512,256)
         self.fc3 = nn.Linear(256,9)
         self.relu = nn.ReLU()
-
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
         self.bn3 = nn.BatchNorm1d(1024)
-        self.bn4 = nn.BatchNorm1d(512)
-        self.bn5 = nn.BatchNorm1d(256)
 
     def forward(self,x):
         batchsize = x.size()[0]
@@ -29,9 +25,8 @@ class T_Net(nn.Module):
         x = self.relu(self.bn3(self.conv3(x)))
         x = torch.max(x, 2, keepdim=True)[0]
         x = x.view(-1, 1024)
-
-        x = self.relu(self.bn4(self.fc1(x)))
-        x = self.relu(self.bn5(self.fc2(x)))
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
         x = self.fc3(x)
 
         iden = Variable(torch.from_numpy(np.array([1, 0, 0, 0, 1, 0, 0, 0, 1]).astype(np.float32))).view(1,9).repeat(batchsize, 1)
@@ -71,12 +66,12 @@ class PointNetEncoder(nn.Module):
             return x,trans
         else:
             x = x.view(-1,1024,1).repeat(1,1,n_pts)
-            return torch.cat([x,pointfeat],1),trans
+            return torch.cat([x,pointfeat],1)
 
 class PointNetPartSeg(nn.Module):
-    def __init__(self, num_class):
+    def __init__(self, out_num):
         super(PointNetPartSeg, self).__init__()
-        self.k = num_class
+        self.k = out_num
         self.feat = PointNetEncoder(global_feat=False)
         self.conv1 = nn.Conv1d(1088, 512, 1)
         self.conv2 = nn.Conv1d(512, 256, 1)
@@ -91,14 +86,13 @@ class PointNetPartSeg(nn.Module):
     def forward(self, x):
         batchsize = x.size()[0]
         n_pts = x.size()[2]
-        x, trans = self.feat(x)
+        x = self.feat(x)
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
         x = self.conv4(x)
         x = x.transpose(2,1).contiguous()
-        x = F.log_softmax(x.view(-1,self.k), dim=-1)
         x = x.view(batchsize, n_pts, self.k)
-        return x,trans
+        return x
 
 
