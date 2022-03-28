@@ -2,18 +2,36 @@
 import numpy as np
 
 data = []
+data_class = []
 with open("D:/data/excise_data/data1/0000.txt",'r') as f1:
     data_origin = f1.readlines()
     for data_str in data_origin:
         data_float = list(map(float,data_str.split()))
-        data.append(data_float[:6])
+        data.append(data_float)
+        data_xrgb = [data_float[0]] + [data_float[2]] + data_float[3:6]
+        data_class.append(data_xrgb)
 
-data = np.asarray(data)
-data_norm = data - data.mean(axis=0) / data.std(axis=0)
+
+data_class = np.asarray(data_class)
+data_norm = (data_class - data_class.mean(axis=0)) / data_class.std(axis=0)
+data_norm[:,1:] *= 20
+# data_norm = data_norm[:,3:6]
+
+data1 = []
+data2 = []
+data_norm1 = []
+data_norm2 = []
+for inx in range(len(data)):
+    if data_norm[inx][0] < 0:
+        data_norm1.append(data_norm[inx])
+        data1.append(data[inx])
+    else:
+        data_norm2.append(data_norm[inx])
+        data2.append(data[inx])
 
 class K_Means(object):
     # k是分组数；tolerance‘中心点误差’；max_iter是迭代次数
-    def __init__(self, k=2, tolerance=0.0001, max_iter=300):
+    def __init__(self, k, tolerance=0.0001, max_iter=1000):
         self.k_ = k
         self.tolerance_ = tolerance
         self.max_iter_ = max_iter
@@ -60,20 +78,37 @@ class K_Means(object):
 
 
 if __name__ == '__main__':
-    x = data
+    x = data_norm2
     k_means = K_Means(k=2)
     k_means.fit_center(x)
-    print(k_means.centers_)
+    # print(k_means.centers_)
     data_landslide = []
-    for i in range(len(data_norm)):
-        class_res = k_means.predict(data_norm[i])
-        if class_res:
-            data_landslide.append(data[i])
+    noise1 = []
+    noise2 = []
+    for i in range(len(x)):
+        class_res = k_means.predict(x[i])
+        if class_res == 0:
+            noise1.append(data2[i])
+        # elif class_res == 1:
+        #     noise2.append(data[i])
+        else:
+            data_landslide.append(data2[i])
 
-    with open("D:/data/excise_data/data_process/0000.txt",'w') as f2:
+    print(len(data_landslide))
+    print(len(noise1))
+
+    with open("D:/data/excise_data/kmeans/landslide.pts",'w') as f2:
         for data_s in data_landslide:
             data_s = list(map(str,data_s))
             for s in data_s:
                 f2.write(s)
                 f2.write(' ')
             f2.write('\n')
+    with open("D:/data/excise_data/kmeans/noise1.pts",'w') as f2:
+        for data_s in noise1:
+            data_s = list(map(str,data_s))
+            for s in data_s:
+                f2.write(s)
+                f2.write(' ')
+            f2.write('\n')
+
